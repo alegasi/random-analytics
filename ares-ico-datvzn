@@ -1,0 +1,42 @@
+# v0.1 Feb. 16, 2016
+# this script extracts selected data (date of establishment) on firms from ARES (Czech Business Register)
+# based on IČO and saves them into csv
+#
+import urllib
+import csv
+import time
+import xml.etree.ElementTree as ET
+
+path  = '/home/Python/'
+
+# import a text file with ico's & create a list
+handle = open(path + 'missing_ico.txt', 'r')
+icolist = list()
+for line in handle:
+    icos = line.split()
+    for ico in icos:
+        if ico in icolist: continue
+        icolist.append(ico)
+
+# create dictionary with XML prefixes
+ns = {'are':'http://wwwinfo.mfcr.cz/ares/xml_doc/schemas/ares/ares_answer/v_1.0.1'}
+
+# create a dictionary
+datvzn = dict()
+for ico in icolist:
+    try:    
+        time.sleep(0.05)
+        html = urllib.urlopen('http://wwwinfo.mfcr.cz/cgi-bin/ares/darv_std.cgi?czk=utf&aktivni=false&ico='+str(ico)).read()
+        tree = ET.fromstring(html)
+        name = tree.find('.//are:Datum_vzniku', ns)
+        datvzn[ico] = name.text
+    except AttributeError, e:
+        print 'Error:'+ico+' is missing'
+        pass
+print datvzn
+
+# saving the parsed data
+with open(path + 'missing_ico.csv', 'wb') as csvfile: 
+    w = csv.DictWriter(csvfile, datvzn.keys())
+    w.writeheader()
+    w.writerow(datvzn)
